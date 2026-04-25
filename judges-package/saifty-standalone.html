@@ -528,6 +528,7 @@
             color: #d9eef8;
             font-size: 0.78rem;
             font-weight: 900;
+	    text-transform: capitalize;
         }
 
         .weight-row em {
@@ -1305,7 +1306,7 @@
             $("learningWeights").innerHTML = "";
 
             Object.entries(state.learning.weights).forEach(([key, weight]) => {
-                const label = key.replace("_score", "").replace("external", "trained api").replaceAll("_", " ");
+                const label = key.replace("_score", "").replace("external", "Trained API").replaceAll("_", " ");
                 const percent = Math.round(weight * 100);
                 const row = document.createElement("div");
                 row.className = "weight-row";
