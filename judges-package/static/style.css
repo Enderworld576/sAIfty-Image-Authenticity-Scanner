@@ -1,3 +1,12 @@
+/*
+  sAIfty+ visual design.
+
+  AI assistance disclosure for judges:
+  The futuristic dashboard styling, responsive layout, glassmorphism panels,
+  batch table styling, and chatbot widget styling were AI-generated with
+  project-specific design direction.
+*/
+
 :root {
     --bg: #020711;
     --panel: rgba(9, 20, 39, 0.72);
@@ -365,10 +374,6 @@ h3 {
 .section-heading {
     gap: 14px;
     margin-bottom: 20px;
-}
-
-.compact-heading {
-    margin-bottom: 14px;
 }
 
 .drop-zone {
@@ -796,152 +801,6 @@ h3 {
 
 .batch-panel {
     margin-top: 20px;
-}
-
-.feedback-panel {
-    margin-top: 24px;
-    padding: 16px;
-    border: 1px solid rgba(125, 224, 255, 0.18);
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.045);
-}
-
-.feedback-actions {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 10px;
-}
-
-.feedback-button {
-    display: inline-flex;
-    min-height: 44px;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 0 12px;
-    border: 1px solid rgba(125, 224, 255, 0.22);
-    border-radius: 8px;
-    color: #dff6ff;
-    background: rgba(255, 255, 255, 0.06);
-    cursor: pointer;
-    font-size: 0.86rem;
-    font-weight: 900;
-    transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
-}
-
-.feedback-button:hover:not(:disabled) {
-    transform: translateY(-2px);
-    border-color: rgba(40, 215, 255, 0.58);
-    background: rgba(40, 215, 255, 0.11);
-}
-
-.feedback-button:disabled {
-    cursor: wait;
-    opacity: 0.55;
-}
-
-.feedback-message {
-    min-height: 22px;
-    margin: 12px 0 0;
-    color: #bdfce5;
-    font-size: 0.9rem;
-    font-weight: 700;
-}
-
-.feedback-message.error {
-    color: #ffb1bf;
-}
-
-.learning-panel {
-    margin-top: 20px;
-    padding: 22px;
-}
-
-.learning-summary {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 12px;
-    margin-bottom: 16px;
-}
-
-.learning-summary div {
-    min-height: 88px;
-    padding: 14px;
-    border: 1px solid rgba(125, 224, 255, 0.16);
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.045);
-}
-
-.learning-summary span {
-    display: block;
-    color: var(--muted);
-    font-size: 0.76rem;
-    font-weight: 900;
-    text-transform: uppercase;
-}
-
-.learning-summary strong {
-    display: block;
-    margin-top: 10px;
-    font-family: "Space Grotesk", Inter, sans-serif;
-    font-size: 1.25rem;
-}
-
-.learning-weights {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 10px;
-}
-
-.learning-weights p {
-    grid-column: 1 / -1;
-    margin: 0;
-    color: var(--muted);
-}
-
-.weight-row {
-    min-width: 0;
-    padding: 12px;
-    border: 1px solid rgba(125, 224, 255, 0.16);
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.045);
-}
-
-.weight-row span {
-    display: flex;
-    justify-content: space-between;
-    gap: 8px;
-    color: #d9eef8;
-    font-size: 0.8rem;
-    font-weight: 900;
-}
-
-.weight-row strong,
-.weight-row em {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.weight-row em {
-    flex: 0 0 auto;
-    color: var(--green);
-    font-style: normal;
-}
-
-.weight-track {
-    height: 9px;
-    margin-top: 10px;
-    overflow: hidden;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.09);
-}
-
-.weight-fill {
-    height: 100%;
-    border-radius: inherit;
-    background: linear-gradient(90deg, var(--cyan), var(--green));
-    transition: width 450ms ease;
 }
 
 .batch-layout {
@@ -1398,12 +1257,6 @@ h3 {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .feedback-actions,
-    .learning-summary,
-    .learning-weights {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
     .threat-card {
         min-height: 360px;
     }
@@ -1421,7 +1274,6 @@ h3 {
     .chart-panel,
     .explain-panel,
     .dataset-panel,
-    .learning-panel,
     .info-grid .panel {
         padding: 16px;
     }
@@ -1468,12 +1320,6 @@ h3 {
 
     .batch-summary {
         grid-template-columns: 1fr 1fr;
-    }
-
-    .feedback-actions,
-    .learning-summary,
-    .learning-weights {
-        grid-template-columns: 1fr;
     }
 
     .chat-widget {

@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!--
+        sAIfty+ judge demo page.
+        AI assistance disclosure: the overall dashboard layout, batch upload
+        section, and chatbot widget markup were AI-generated with human review.
+    -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>sAIfty+ Image Authenticity Scanner</title>
@@ -8,7 +13,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=5">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=4">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
@@ -194,67 +199,7 @@
                         <strong id="colorScore">--</strong>
                     </div>
                 </div>
-
-                <section id="feedbackPanel" class="feedback-panel" hidden>
-                    <div class="section-heading compact-heading">
-                        <span class="icon-pill"><i class="fa-solid fa-sliders"></i></span>
-                        <div>
-                            <p class="eyebrow">Live Feedback Learning</p>
-                            <h3>Was this prediction correct?</h3>
-                        </div>
-                    </div>
-                    <div class="feedback-actions" aria-label="Prediction feedback buttons">
-                        <button class="feedback-button" type="button" data-feedback="correct">
-                            <i class="fa-solid fa-check"></i>
-                            Correct
-                        </button>
-                        <button class="feedback-button" type="button" data-feedback="wrong_real">
-                            <i class="fa-solid fa-camera"></i>
-                            Wrong, this was real
-                        </button>
-                        <button class="feedback-button" type="button" data-feedback="wrong_ai">
-                            <i class="fa-solid fa-robot"></i>
-                            Wrong, this was AI-generated
-                        </button>
-                        <button class="feedback-button" type="button" data-feedback="unsure">
-                            <i class="fa-solid fa-circle-question"></i>
-                            Unsure
-                        </button>
-                    </div>
-                    <p id="feedbackMessage" class="feedback-message" aria-live="polite"></p>
-                </section>
             </article>
-        </section>
-
-        <section id="learningStatusPanel" class="panel learning-panel">
-            <div class="section-heading">
-                <span class="icon-pill"><i class="fa-solid fa-brain"></i></span>
-                <div>
-                    <p class="eyebrow">Adaptive Calibration</p>
-                    <h2>Live Learning Status</h2>
-                </div>
-            </div>
-            <div class="learning-summary">
-                <div>
-                    <span>Feedback Submitted</span>
-                    <strong id="feedbackCount">0</strong>
-                </div>
-                <div>
-                    <span>Verified Examples Saved</span>
-                    <strong id="verifiedExamplesCount">0</strong>
-                </div>
-                <div>
-                    <span>Last Update</span>
-                    <strong id="lastCalibrationUpdate">Not yet</strong>
-                </div>
-                <div>
-                    <span>Calibration Bias</span>
-                    <strong id="calibrationBias">0</strong>
-                </div>
-            </div>
-            <div id="learningWeights" class="learning-weights" aria-label="Current adaptive scoring weights">
-                <p>Weights will load when the dashboard starts.</p>
-            </div>
         </section>
 
         <section id="batch-upload" class="panel batch-panel">
@@ -460,6 +405,6 @@
         </aside>
     </main>
 
-    <script src="{{ url_for('static', filename='script.js') }}?v=5"></script>
+    <script src="{{ url_for('static', filename='script.js') }}?v=4"></script>
 </body>
 </html>

@@ -1,12 +1,17 @@
+"""
+sAIfty+ Image Authenticity Scanner backend.
+
+AI assistance disclosure for judges:
+The Flask routing and simple upload handling were straightforward project code.
+The more difficult prototype pieces, including the image-forensics scoring
+functions, HEIC/DNG support, and Sightengine API integration, were created with
+AI assistance and then reviewed/assembled for this educational demo.
+"""
+
 import io
-import json
 import math
 import os
-import hashlib
 import tempfile
-import threading
-from copy import deepcopy
-from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple
 
 import cv2
@@ -141,131 +146,10 @@ CAMERA_EXIF_FIELDS = {
     "FocalLength",
 }
 
-SIGNAL_LABELS = {
-    "external_score": "Trained API Model",
-    "metadata_score": "Metadata",
-    "texture_score": "Texture",
-    "frequency_score": "Frequency",
-    "edge_score": "Edges",
-    "compression_score": "Compression",
-    "pattern_score": "Patterns",
-    "color_score": "Color",
-}
-
-# These weights are the starting calibration. Feedback nudges them rather than
-# retraining a neural network, which keeps the live demo fast and explainable.
-DEFAULT_SIGNAL_WEIGHTS = {
-    "external_score": 0.55,
-    "metadata_score": 0.09,
-    "texture_score": 0.08,
-    "frequency_score": 0.07,
-    "edge_score": 0.06,
-    "compression_score": 0.06,
-    "pattern_score": 0.05,
-    "color_score": 0.04,
-}
-LEARNING_DATA_FILE = os.environ.get("SAIFTY_LEARNING_FILE", "learning_data.json")
-LEARNING_RATE = 0.12
-MIN_SIGNAL_WEIGHT = 0.025
-MAX_SIGNAL_WEIGHT = 0.72
-DEFAULT_CALIBRATION_BIAS = 0.0
-MAX_CALIBRATION_BIAS = 35.0
-learning_lock = threading.Lock()
-
 
 def clamp(value: float, low: float = 0, high: float = 100) -> float:
     """Constrain a numeric score to the dashboard's 0-100 scale."""
     return max(low, min(high, value))
-
-
-def utc_timestamp() -> str:
-    """Return a compact timestamp for saved feedback examples."""
-    return datetime.now(timezone.utc).isoformat()
-
-
-def normalize_weights(weights: Dict[str, float]) -> Dict[str, float]:
-    """Keep every signal weight positive and make the total add up to 1.0."""
-    cleaned = {}
-    for key, default in DEFAULT_SIGNAL_WEIGHTS.items():
-        value = float(weights.get(key, default))
-        cleaned[key] = clamp(value, MIN_SIGNAL_WEIGHT, MAX_SIGNAL_WEIGHT)
-
-    total = sum(cleaned.values()) or 1.0
-    return {key: round(value / total, 5) for key, value in cleaned.items()}
-
-
-def default_learning_state() -> Dict:
-    """Create the JSON structure used by the live calibration system."""
-    return {
-        "weights": normalize_weights(DEFAULT_SIGNAL_WEIGHTS),
-        "calibration_bias": DEFAULT_CALIBRATION_BIAS,
-        "feedback": [],
-        "verified_examples": [],
-        "last_updated": None,
-    }
-
-
-def load_learning_state() -> Dict:
-    """Read calibration data from disk, falling back safely if the file is absent."""
-    if not os.path.exists(LEARNING_DATA_FILE):
-        return default_learning_state()
-
-    try:
-        with open(LEARNING_DATA_FILE, "r", encoding="utf-8") as file:
-            state = json.load(file)
-    except (OSError, json.JSONDecodeError):
-        return default_learning_state()
-
-    default_state = default_learning_state()
-    state["weights"] = normalize_weights(state.get("weights", default_state["weights"]))
-    state["calibration_bias"] = clamp(float(state.get("calibration_bias", DEFAULT_CALIBRATION_BIAS)), -MAX_CALIBRATION_BIAS, MAX_CALIBRATION_BIAS)
-    state["feedback"] = state.get("feedback", [])
-    state["verified_examples"] = state.get("verified_examples", [])
-    state["last_updated"] = state.get("last_updated")
-    return state
-
-
-def save_learning_state(state: Dict) -> None:
-    """Write calibration data atomically so a partial write does not corrupt it."""
-    directory = os.path.dirname(os.path.abspath(LEARNING_DATA_FILE)) or "."
-    os.makedirs(directory, exist_ok=True)
-
-    fd, temp_path = tempfile.mkstemp(prefix="learning-", suffix=".json", dir=directory)
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as file:
-            json.dump(state, file, indent=2)
-        os.replace(temp_path, LEARNING_DATA_FILE)
-    finally:
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
-
-
-def current_weights() -> Dict[str, float]:
-    """Return the active adaptive weights for scoring."""
-    with learning_lock:
-        return load_learning_state()["weights"]
-
-
-def learning_status_from_state(state: Optional[Dict] = None) -> Dict:
-    """Format calibration state for the frontend Live Learning Status panel."""
-    state = state or load_learning_state()
-    weights = normalize_weights(state.get("weights", DEFAULT_SIGNAL_WEIGHTS))
-    return {
-        "weights": [
-            {
-                "key": key,
-                "label": SIGNAL_LABELS[key],
-                "weight": weights[key],
-                "percent": int(round(weights[key] * 100)),
-            }
-            for key in DEFAULT_SIGNAL_WEIGHTS
-        ],
-        "feedback_count": len(state.get("feedback", [])),
-        "verified_examples_count": len(state.get("verified_examples", [])),
-        "last_updated": state.get("last_updated"),
-        "learning_rate": LEARNING_RATE,
-        "calibration_bias": round(float(state.get("calibration_bias", DEFAULT_CALIBRATION_BIAS)), 2),
-    }
 
 
 def file_extension(filename: str) -> str:
@@ -713,116 +597,18 @@ def analyze_pattern_consistency(rgb: np.ndarray, gray: np.ndarray) -> Tuple[int,
     return score, explanations
 
 
-def weighted_probability(scores: Dict[str, int], weights: Optional[Dict[str, float]] = None, bias: Optional[float] = None) -> int:
-    """Combine available signals using the current adaptive calibration weights."""
-    if weights is None or bias is None:
-        state = load_learning_state()
-        if weights is None:
-            weights = state["weights"]
-        if bias is None:
-            bias = state.get("calibration_bias", DEFAULT_CALIBRATION_BIAS)
-
-    active_weights = normalize_weights(weights)
-    available_keys = [key for key in active_weights if key in scores and scores[key] is not None]
-    available_total = sum(active_weights[key] for key in available_keys) or 1.0
-    probability = sum(float(scores[key]) * (active_weights[key] / available_total) for key in available_keys) + float(bias)
+def weighted_probability(scores: Dict[str, int]) -> int:
+    weights = {
+        "metadata_score": 0.20,
+        "texture_score": 0.19,
+        "frequency_score": 0.16,
+        "edge_score": 0.14,
+        "compression_score": 0.15,
+        "pattern_score": 0.09,
+        "color_score": 0.07,
+    }
+    probability = sum(scores[key] * weight for key, weight in weights.items())
     return int(round(clamp(probability)))
-
-
-def scores_from_result(result: Dict) -> Dict[str, int]:
-    """Extract score fields from an analysis result for feedback recalculation."""
-    scores = {}
-    for key in DEFAULT_SIGNAL_WEIGHTS:
-        if key == "external_score":
-            value = result.get("external_ai_probability")
-        else:
-            value = result.get(key)
-
-        if value is None:
-            continue
-
-        try:
-            scores[key] = int(round(clamp(float(value))))
-        except (TypeError, ValueError):
-            continue
-
-    return scores
-
-
-def feedback_target(correction: str, result: Dict) -> Optional[int]:
-    """Translate a feedback button into the target AI probability."""
-    if correction == "wrong_real":
-        return 0
-    if correction == "wrong_ai":
-        return 100
-    if correction == "correct":
-        verdict = result.get("verdict")
-        if verdict == "Likely AI-Generated":
-            return 100
-        if verdict == "Likely Real":
-            return 0
-        return 50
-    return None
-
-
-def update_calibration_for_feedback(
-    weights: Dict[str, float],
-    bias: float,
-    scores: Dict[str, int],
-    target: Optional[int],
-    current_probability: int,
-) -> Tuple[Dict[str, float], float]:
-    """Nudge weights and a small bias toward the user's correction."""
-    if target is None or not scores:
-        return normalize_weights(weights), clamp(bias, -MAX_CALIBRATION_BIAS, MAX_CALIBRATION_BIAS)
-
-    active_weights = normalize_weights(weights)
-    average_score = sum(scores.values()) / len(scores)
-    error = (target - current_probability) / 100
-    adjusted = dict(active_weights)
-
-    for key, score in scores.items():
-        if key not in adjusted:
-            continue
-
-        centered_signal = (score - average_score) / 100
-        adjusted[key] = adjusted[key] + (LEARNING_RATE * error * centered_signal)
-
-    adjusted_bias = clamp(bias + ((target - current_probability) * 0.35), -MAX_CALIBRATION_BIAS, MAX_CALIBRATION_BIAS)
-    return normalize_weights(adjusted), round(adjusted_bias, 4)
-
-
-def recalibrate_result(result: Dict, weights: Dict[str, float], bias: float) -> Dict:
-    """Recalculate the displayed result using newly learned weights."""
-    updated = deepcopy(result)
-    scores = scores_from_result(updated)
-    previous_probability = int(round(clamp(float(updated.get("ai_probability", 0)))))
-    recalculated_probability = weighted_probability(scores, weights, bias)
-
-    external_probability = scores.get("external_score")
-    if external_probability is not None:
-        if external_probability >= 88:
-            recalculated_probability = max(recalculated_probability, external_probability - 3)
-        elif external_probability <= 12:
-            recalculated_probability = min(recalculated_probability, external_probability + 6)
-
-    local_scores = {key: value for key, value in scores.items() if key != "external_score"}
-    verdict, confidence, risk_level = classify_result(recalculated_probability, local_scores)
-
-    updated["previous_ai_probability"] = previous_probability
-    updated["ai_probability"] = recalculated_probability
-    updated["verdict"] = verdict
-    updated["confidence"] = confidence
-    updated["risk_level"] = risk_level
-    updated["calibration_updated"] = True
-    updated["calibration_weights"] = learning_status_from_state({"weights": weights, "calibration_bias": bias, "feedback": [], "verified_examples": []})["weights"]
-    updated["calibration_bias"] = round(float(bias), 2)
-    updated.setdefault("explanations", [])
-    updated["explanations"] = [
-        "Model calibration updated using judge feedback and adaptive signal weights.",
-        *updated["explanations"],
-    ]
-    return updated
 
 
 def apply_contextual_adjustments(
@@ -929,18 +715,11 @@ def apply_external_detector(local_result: Dict, external_result: Optional[Dict])
         local_result["detector_provider"] = "Local forensic prototype"
         local_result["external_ai_probability"] = None
         local_result["external_top_generators"] = []
-        local_result["calibration_weights"] = learning_status_from_state({"weights": current_weights(), "feedback": [], "verified_examples": []})["weights"]
         return local_result
 
     local_probability = int(local_result["ai_probability"])
     external_probability = int(external_result["ai_probability"])
-    fusion_scores = scores_from_result(
-        {
-            **local_result,
-            "external_ai_probability": external_probability,
-        }
-    )
-    fused_probability = weighted_probability(fusion_scores)
+    fused_probability = int(round(clamp(0.82 * external_probability + 0.18 * local_probability)))
 
     if external_probability >= 88:
         fused_probability = max(fused_probability, external_probability - 3)
@@ -967,7 +746,6 @@ def apply_external_detector(local_result: Dict, external_result: Optional[Dict])
     local_result["detector_provider"] = "Sightengine genai + local explainability"
     local_result["external_ai_probability"] = external_probability
     local_result["external_top_generators"] = external_result["top_generators"]
-    local_result["calibration_weights"] = learning_status_from_state({"weights": current_weights(), "feedback": [], "verified_examples": []})["weights"]
 
     generator_text = ""
     if external_result["top_generators"]:
@@ -1096,8 +874,6 @@ def analyze():
 
     try:
         result = analyze_image(image)
-        result["analysis_id"] = hashlib.sha256(image_bytes).hexdigest()
-        result["uploaded_filename"] = uploaded_file.filename
         try:
             external_result = analyze_with_sightengine(image)
             result = apply_external_detector(result, external_result)
@@ -1105,7 +881,6 @@ def analyze():
             result["detector_provider"] = "Local forensic prototype"
             result["external_ai_probability"] = None
             result["external_top_generators"] = []
-            result["calibration_weights"] = learning_status_from_state({"weights": current_weights(), "feedback": [], "verified_examples": []})["weights"]
             result["explanations"].insert(
                 0,
                 "External trained detector was unavailable, so this result used the local educational scanner only.",
@@ -1114,91 +889,6 @@ def analyze():
         return jsonify({"error": "The scanner could not process this image. Try a smaller or different file."}), 500
 
     return jsonify(result)
-
-
-@app.route("/learning-status", methods=["GET"])
-def learning_status():
-    """Expose current adaptive weights and feedback counts to the dashboard."""
-    with learning_lock:
-        state = load_learning_state()
-
-    return jsonify(learning_status_from_state(state))
-
-
-@app.route("/feedback", methods=["POST"])
-def feedback():
-    """Save judge feedback, update adaptive weights, and recalculate the result."""
-    payload = request.get_json(silent=True) or {}
-    correction = payload.get("correction")
-    result = payload.get("result")
-
-    allowed_corrections = {"correct", "wrong_real", "wrong_ai", "unsure"}
-    if correction not in allowed_corrections:
-        return jsonify({"error": "Invalid feedback choice."}), 400
-    if not isinstance(result, dict):
-        return jsonify({"error": "Missing image analysis result for calibration."}), 400
-
-    scores = scores_from_result(result)
-    if not scores:
-        return jsonify({"error": "The submitted result did not include scores to calibrate."}), 400
-
-    current_probability = int(round(clamp(float(result.get("ai_probability", 0)))))
-    target = feedback_target(correction, result)
-
-    with learning_lock:
-        state = load_learning_state()
-        updated_weights, updated_bias = update_calibration_for_feedback(
-            state["weights"],
-            float(state.get("calibration_bias", DEFAULT_CALIBRATION_BIAS)),
-            scores,
-            target,
-            current_probability,
-        )
-        state["weights"] = updated_weights
-        state["calibration_bias"] = updated_bias
-        state["last_updated"] = utc_timestamp()
-
-        feedback_entry = {
-            "timestamp": state["last_updated"],
-            "correction": correction,
-            "target_ai_probability": target,
-            "analysis_id": result.get("analysis_id"),
-            "uploaded_filename": result.get("uploaded_filename"),
-            "prediction": {
-                "verdict": result.get("verdict"),
-                "ai_probability": result.get("ai_probability"),
-                "confidence": result.get("confidence"),
-                "risk_level": result.get("risk_level"),
-            },
-            "scores": scores,
-            "explanations": result.get("explanations", [])[:8],
-        }
-        state["feedback"].append(feedback_entry)
-
-        if correction in {"correct", "wrong_real", "wrong_ai"}:
-            state["verified_examples"].append(
-                {
-                    "timestamp": state["last_updated"],
-                    "analysis_id": result.get("analysis_id"),
-                    "uploaded_filename": result.get("uploaded_filename"),
-                    "verified_label": "ai_generated" if target == 100 else "real" if target == 0 else "uncertain",
-                    "scores": scores,
-                    "original_prediction": feedback_entry["prediction"],
-                }
-            )
-
-        save_learning_state(state)
-        status = learning_status_from_state(state)
-
-    updated_result = recalibrate_result(result, updated_weights, updated_bias)
-
-    return jsonify(
-        {
-            "message": "Model calibration updated.",
-            "updated_result": updated_result,
-            "learning_status": status,
-        }
-    )
 
 
 @app.errorhandler(413)

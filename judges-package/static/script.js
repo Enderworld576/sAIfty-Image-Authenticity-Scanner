@@ -1,3 +1,13 @@
+/*
+  sAIfty+ frontend behavior.
+
+  AI assistance disclosure for judges:
+  The most complex JavaScript sections, including drag-and-drop upload,
+  dynamic dashboard rendering, the batch-upload loop, Chart.js fallback logic,
+  and the rule-based chatbot, were AI-generated with human direction and
+  edited into this final project.
+*/
+
 const imageInput = document.getElementById("imageInput");
 const dropZone = document.getElementById("dropZone");
 const chooseButton = document.getElementById("chooseButton");
@@ -18,14 +28,6 @@ const batchTotal = document.getElementById("batchTotal");
 const batchReal = document.getElementById("batchReal");
 const batchUncertain = document.getElementById("batchUncertain");
 const batchAi = document.getElementById("batchAi");
-const feedbackPanel = document.getElementById("feedbackPanel");
-const feedbackMessage = document.getElementById("feedbackMessage");
-const feedbackButtons = document.querySelectorAll("[data-feedback]");
-const learningWeights = document.getElementById("learningWeights");
-const feedbackCount = document.getElementById("feedbackCount");
-const verifiedExamplesCount = document.getElementById("verifiedExamplesCount");
-const lastCalibrationUpdate = document.getElementById("lastCalibrationUpdate");
-const calibrationBias = document.getElementById("calibrationBias");
 
 const probabilityGauge = document.getElementById("probabilityGauge");
 const probabilityValue = document.getElementById("probabilityValue");
@@ -78,7 +80,6 @@ let selectedFile = null;
 let selectedBatchFiles = [];
 let scoreChart = null;
 let previewUrl = "";
-let currentAnalysisResult = null;
 
 const allowedExtensions = [
     "jpg",
@@ -155,69 +156,6 @@ function datasetRecommendation(riskLevel) {
     if (riskLevel === "Medium") return "Review";
     if (riskLevel === "Low") return "Approve";
     return "Hold";
-}
-
-function setFeedbackMessage(text, type = "") {
-    feedbackMessage.textContent = text;
-    feedbackMessage.className = `feedback-message ${type}`.trim();
-}
-
-function setFeedbackLoading(isLoading) {
-    feedbackButtons.forEach((button) => {
-        button.disabled = isLoading;
-    });
-}
-
-function formatCalibrationTime(value) {
-    if (!value) return "Not yet";
-
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "Just now";
-
-    return date.toLocaleString([], {
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-    });
-}
-
-function renderLearningStatus(status) {
-    feedbackCount.textContent = String(status.feedback_count ?? 0);
-    verifiedExamplesCount.textContent = String(status.verified_examples_count ?? 0);
-    lastCalibrationUpdate.textContent = formatCalibrationTime(status.last_updated);
-    calibrationBias.textContent = `${Number(status.calibration_bias ?? 0).toFixed(1)}`;
-    learningWeights.innerHTML = "";
-
-    (status.weights || []).forEach((item) => {
-        const row = document.createElement("div");
-        row.className = "weight-row";
-
-        const label = document.createElement("span");
-        label.innerHTML = `<strong>${item.label}</strong><em>${item.percent}%</em>`;
-
-        const track = document.createElement("div");
-        track.className = "weight-track";
-
-        const fill = document.createElement("div");
-        fill.className = "weight-fill";
-        fill.style.width = `${item.percent}%`;
-
-        track.appendChild(fill);
-        row.append(label, track);
-        learningWeights.appendChild(row);
-    });
-}
-
-async function loadLearningStatus() {
-    try {
-        const response = await fetch("/learning-status");
-        const status = await response.json();
-        if (!response.ok) throw new Error(status.error || "Learning status failed to load.");
-        renderLearningStatus(status);
-    } catch (error) {
-        learningWeights.innerHTML = `<p>${error.message}</p>`;
-    }
 }
 
 function validateFile(file) {
@@ -445,9 +383,6 @@ function updateChart(result) {
 
 function renderResults(result) {
     try {
-        currentAnalysisResult = result;
-        feedbackPanel.hidden = false;
-        setFeedbackMessage("");
         updateGauge(result.ai_probability);
 
         verdictBadge.textContent = result.verdict;
@@ -545,49 +480,6 @@ dropZone.addEventListener("drop", (event) => {
 });
 
 analyzeButton.addEventListener("click", analyzeImage);
-
-async function submitFeedback(correction) {
-    if (!currentAnalysisResult) {
-        setFeedbackMessage("Run a scan before submitting feedback.", "error");
-        return;
-    }
-
-    setFeedbackLoading(true);
-    setFeedbackMessage("Updating calibration weights...");
-
-    try {
-        const response = await fetch("/feedback", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                correction,
-                result: currentAnalysisResult,
-            }),
-        });
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.error || "Feedback could not be saved.");
-        }
-
-        renderResults(data.updated_result);
-        renderLearningStatus(data.learning_status);
-        setFeedbackMessage(data.message || "Model calibration updated.");
-        setMessage("Model calibration updated. The final probability was recalculated with the new weights.", "success");
-    } catch (error) {
-        setFeedbackMessage(error.message, "error");
-    } finally {
-        setFeedbackLoading(false);
-    }
-}
-
-feedbackButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-        submitFeedback(button.dataset.feedback);
-    });
-});
 
 function batchVerdictClass(verdict) {
     if (verdict === "Likely AI-Generated") return "ai";
@@ -894,7 +786,6 @@ document.addEventListener("keydown", (event) => {
 });
 
 toggleChat(false);
-loadLearningStatus();
 
 chatForm.addEventListener("submit", (event) => {
     event.preventDefault();
