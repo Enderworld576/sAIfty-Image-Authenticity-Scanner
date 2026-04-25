@@ -5,6 +5,7 @@ const replaceButton = document.getElementById("replaceButton");
 const analyzeButton = document.getElementById("analyzeButton");
 const previewWrap = document.getElementById("previewWrap");
 const imagePreview = document.getElementById("imagePreview");
+const videoPreview = document.getElementById("videoPreview");
 const previewFallback = document.getElementById("previewFallback");
 const emptyUpload = document.getElementById("emptyUpload");
 const fileName = document.getElementById("fileName");
@@ -26,6 +27,15 @@ const feedbackCount = document.getElementById("feedbackCount");
 const verifiedExamplesCount = document.getElementById("verifiedExamplesCount");
 const lastCalibrationUpdate = document.getElementById("lastCalibrationUpdate");
 const calibrationBias = document.getElementById("calibrationBias");
+const textDetectionInput = document.getElementById("textDetectionInput");
+const analyzeTextButton = document.getElementById("analyzeTextButton");
+const textDetectionMessage = document.getElementById("textDetectionMessage");
+const textResultCard = document.getElementById("textResultCard");
+const textProbabilityValue = document.getElementById("textProbabilityValue");
+const textProbabilityBar = document.getElementById("textProbabilityBar");
+const textVerdictBadge = document.getElementById("textVerdictBadge");
+const textRiskValue = document.getElementById("textRiskValue");
+const textExplanationList = document.getElementById("textExplanationList");
 
 const probabilityGauge = document.getElementById("probabilityGauge");
 const probabilityValue = document.getElementById("probabilityValue");
@@ -99,6 +109,12 @@ const allowedExtensions = [
     "bmp",
     "mpo",
     "dng",
+    "mp4",
+    "mov",
+    "m4v",
+    "webm",
+    "avi",
+    "mkv",
 ];
 const allowedTypes = [
     "image/jpeg",
@@ -124,6 +140,12 @@ const allowedTypes = [
     "application/dng",
     "application/x-dng",
     "application/octet-stream",
+    "video/mp4",
+    "video/quicktime",
+    "video/x-m4v",
+    "video/webm",
+    "video/x-msvideo",
+    "video/x-matroska",
 ];
 
 function setMessage(text, type = "") {
@@ -155,6 +177,90 @@ function datasetRecommendation(riskLevel) {
     if (riskLevel === "Medium") return "Review";
     if (riskLevel === "Low") return "Approve";
     return "Hold";
+}
+
+function isVideoFile(file) {
+    const extension = fileExtension(file.name);
+    const type = (file.type || "").toLowerCase();
+    return type.startsWith("video/") || ["mp4", "mov", "m4v", "webm", "avi", "mkv"].includes(extension);
+}
+
+function textVerdictClass(verdict) {
+    if (verdict === "Likely AI-Generated") return "ai";
+    if (verdict === "Uncertain") return "uncertain";
+    if (verdict === "Likely Human") return "real";
+    return "neutral";
+}
+
+function setTextMessage(text, type = "") {
+    textDetectionMessage.textContent = text;
+    textDetectionMessage.className = `message-box ${type}`.trim();
+}
+
+function setTextLoading(isLoading) {
+    analyzeTextButton.disabled = isLoading;
+    analyzeTextButton.classList.toggle("is-loading", isLoading);
+}
+
+function renderTextExplanations(explanations) {
+    textExplanationList.innerHTML = "";
+    const notes = explanations?.length ? explanations : ["No text explanation was returned."];
+    notes.forEach((text) => {
+        const li = document.createElement("li");
+        li.textContent = text;
+        textExplanationList.appendChild(li);
+    });
+}
+
+function renderTextResult(result) {
+    const probability = safeScore(result.ai_probability);
+    textResultCard.hidden = false;
+    textProbabilityValue.textContent = `${probability}%`;
+    textProbabilityBar.style.width = "0%";
+    textProbabilityBar.style.background = `linear-gradient(90deg, ${scoreColor(probability)}, #28d7ff)`;
+    requestAnimationFrame(() => {
+        textProbabilityBar.style.width = `${probability}%`;
+    });
+    textVerdictBadge.textContent = result.verdict;
+    textVerdictBadge.className = `verdict-badge ${textVerdictClass(result.verdict)}`;
+    textRiskValue.textContent = result.risk_level;
+    renderTextExplanations(result.explanations || []);
+}
+
+async function analyzeText() {
+    const text = textDetectionInput.value.trim();
+
+    if (!text) {
+        setTextMessage("Paste text before running AI text detection.", "error");
+        return;
+    }
+    if (text.length < 30) {
+        setTextMessage("Please enter at least 30 characters for a meaningful text scan.", "error");
+        return;
+    }
+
+    setTextLoading(true);
+    setTextMessage("Scanning text for AI-generated writing patterns...");
+
+    try {
+        const response = await fetch("/analyze-text", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text }),
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "The server could not analyze this text.");
+        }
+
+        renderTextResult(data);
+        setTextMessage("Text analysis complete. Use the result as dataset triage, not a final verdict.", "success");
+    } catch (error) {
+        setTextMessage(error.message, "error");
+    } finally {
+        setTextLoading(false);
+    }
 }
 
 function setFeedbackMessage(text, type = "") {
@@ -227,9 +333,10 @@ function validateFile(file) {
     const knownType = allowedTypes.includes(type);
     const knownExtension = allowedExtensions.includes(extension);
     const imageTypeFromPhone = type.startsWith("image/") && type !== "image/svg+xml";
+    const videoTypeFromPhone = type.startsWith("video/");
 
-    if (!knownType && !knownExtension && !imageTypeFromPhone) {
-        return "Please upload a phone image format such as JPEG, PNG, WebP, HEIC, HEIF, AVIF, GIF, TIFF, BMP, MPO, or DNG.";
+    if (!knownType && !knownExtension && !imageTypeFromPhone && !videoTypeFromPhone) {
+        return "Please upload a phone image or video format such as JPEG, PNG, HEIC, DNG, MP4, MOV, M4V, WebM, AVI, or MKV.";
     }
 
     return "";
@@ -254,23 +361,44 @@ function selectFile(file) {
     }
 
     previewUrl = URL.createObjectURL(file);
-    imagePreview.hidden = false;
     previewFallback.hidden = true;
-    imagePreview.onload = () => {
-        imagePreview.hidden = false;
-        previewFallback.hidden = true;
-    };
-    imagePreview.onerror = () => {
+    videoPreview.pause();
+    videoPreview.removeAttribute("src");
+    videoPreview.load();
+
+    if (isVideoFile(file)) {
         imagePreview.hidden = true;
-        previewFallback.hidden = false;
-        setMessage("Image ready. This format may not preview in the browser, but the backend can still analyze it.", "success");
-    };
-    imagePreview.src = previewUrl;
+        imagePreview.removeAttribute("src");
+        videoPreview.hidden = false;
+        videoPreview.onloadeddata = () => {
+            videoPreview.hidden = false;
+            previewFallback.hidden = true;
+        };
+        videoPreview.onerror = () => {
+            videoPreview.hidden = true;
+            previewFallback.hidden = false;
+            setMessage("Video ready. Preview may be unavailable, but the backend can analyze the first frame.", "success");
+        };
+        videoPreview.src = previewUrl;
+    } else {
+        videoPreview.hidden = true;
+        imagePreview.hidden = false;
+        imagePreview.onload = () => {
+            imagePreview.hidden = false;
+            previewFallback.hidden = true;
+        };
+        imagePreview.onerror = () => {
+            imagePreview.hidden = true;
+            previewFallback.hidden = false;
+            setMessage("Image ready. This format may not preview in the browser, but the backend can still analyze it.", "success");
+        };
+        imagePreview.src = previewUrl;
+    }
 
     previewWrap.hidden = false;
     emptyUpload.hidden = true;
     analyzeButton.disabled = false;
-    setMessage("Image ready. Start analysis when you are ready.", "success");
+    setMessage(isVideoFile(file) ? "Video ready. The scanner will analyze the first frame." : "Image ready. Start analysis when you are ready.", "success");
 }
 
 function openFilePicker(event) {
@@ -490,7 +618,7 @@ async function analyzeImage() {
     formData.append("image", selectedFile);
 
     setLoading(true);
-    setMessage("Scanning metadata, texture, frequency, repeated patterns, edges, compression, and color distribution...");
+    setMessage(isVideoFile(selectedFile) ? "Extracting the first video frame, then scanning image authenticity signals..." : "Scanning metadata, texture, frequency, repeated patterns, edges, compression, and color distribution...");
 
     try {
         const response = await fetch("/analyze", {
@@ -504,7 +632,7 @@ async function analyzeImage() {
         }
 
         renderResults(data);
-        setMessage("Analysis complete. Use the report to decide whether this image belongs in a training dataset.", "success");
+        setMessage(data.input_type === "video" ? "Video first-frame analysis complete. Use the report as a dataset triage signal." : "Analysis complete. Use the report to decide whether this image belongs in a training dataset.", "success");
     } catch (error) {
         setMessage(error.message, "error");
     } finally {
@@ -545,6 +673,7 @@ dropZone.addEventListener("drop", (event) => {
 });
 
 analyzeButton.addEventListener("click", analyzeImage);
+analyzeTextButton.addEventListener("click", analyzeText);
 
 async function submitFeedback(correction) {
     if (!currentAnalysisResult) {

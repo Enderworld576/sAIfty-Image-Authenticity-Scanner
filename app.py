@@ -63,6 +63,14 @@ ALLOWED_EXTENSIONS = {
     "mpo",
     "dng",
 }
+VIDEO_EXTENSIONS = {
+    "mp4",
+    "mov",
+    "m4v",
+    "webm",
+    "avi",
+    "mkv",
+}
 RAW_EXTENSIONS = {"dng"}
 ALLOWED_FORMATS = {"JPEG", "PNG", "WEBP", "HEIF", "AVIF", "GIF", "TIFF", "BMP", "MPO", "DNG"}
 ALLOWED_MIME_TYPES = {
@@ -90,10 +98,21 @@ ALLOWED_MIME_TYPES = {
     "application/x-dng",
     "application/octet-stream",
 }
-SUPPORTED_FORMAT_LABEL = "JPG, JPEG, PNG, WebP, HEIC, HEIF, AVIF, GIF, TIFF, BMP, MPO, or DNG"
+VIDEO_MIME_TYPES = {
+    "video/mp4",
+    "video/quicktime",
+    "video/x-m4v",
+    "video/webm",
+    "video/x-msvideo",
+    "video/x-matroska",
+}
+SUPPORTED_FORMAT_LABEL = "JPG, JPEG, PNG, WebP, HEIC, HEIF, AVIF, GIF, TIFF, BMP, MPO, DNG, MP4, MOV, M4V, WebM, AVI, or MKV"
 MAX_ANALYSIS_DIMENSION = 1200
 EXTERNAL_API_DIMENSION = 1600
 SIGHTENGINE_API_URL = "https://api.sightengine.com/1.0/check.json"
+HUGGINGFACE_AI_TEXT_MODEL = "openai-community/roberta-base-openai-detector"
+HUGGINGFACE_AI_TEXT_API_URL = f"https://router.huggingface.co/hf-inference/models/{HUGGINGFACE_AI_TEXT_MODEL}"
+HARDCODED_HUGGINGFACE_API_TOKEN = "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"
 SIGHTENGINE_TIMEOUT_SECONDS = 25
 
 SUSPICIOUS_METADATA_TERMS = [
@@ -274,7 +293,12 @@ def file_extension(filename: str) -> str:
 
 def allowed_file(filename: str, mimetype: str = "") -> bool:
     extension = file_extension(filename)
-    return extension in ALLOWED_EXTENSIONS or mimetype.lower() in ALLOWED_MIME_TYPES
+    return extension in ALLOWED_EXTENSIONS or extension in VIDEO_EXTENSIONS or mimetype.lower() in ALLOWED_MIME_TYPES or mimetype.lower() in VIDEO_MIME_TYPES
+
+
+def is_video_file(filename: str, mimetype: str = "") -> bool:
+    """Detect supported video uploads by extension or browser-provided MIME type."""
+    return file_extension(filename) in VIDEO_EXTENSIONS or mimetype.lower() in VIDEO_MIME_TYPES
 
 
 def safe_string(value) -> str:
@@ -361,6 +385,37 @@ def open_uploaded_image(image_bytes: bytes, filename: str) -> Image.Image:
     if getattr(image, "is_animated", False) or image.format == "MPO":
         image.seek(0)
     image.load()
+    return image
+
+
+def open_video_first_frame(video_bytes: bytes, filename: str) -> Image.Image:
+    """Extract the first decodable frame from a video and return it as a Pillow image."""
+    suffix = f".{file_extension(filename) or 'mp4'}"
+    temp_path = ""
+
+    try:
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as temp_file:
+            temp_file.write(video_bytes)
+            temp_path = temp_file.name
+
+        capture = cv2.VideoCapture(temp_path)
+        try:
+            if not capture.isOpened():
+                raise UnidentifiedImageError("The uploaded video could not be opened.")
+
+            success, frame = capture.read()
+            if not success or frame is None:
+                raise UnidentifiedImageError("The uploaded video did not contain a readable first frame.")
+        finally:
+            capture.release()
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
+
+    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    image = Image.fromarray(rgb_frame, "RGB")
+    image.format = "VIDEO_FRAME"
+    image.info["VideoFirstFrame"] = f"First frame extracted from {filename}"
     return image
 
 
@@ -975,6 +1030,111 @@ def apply_external_detector(local_result: Dict, external_result: Optional[Dict])
     return local_result
 
 
+def classify_text_result(ai_probability: int) -> Tuple[str, str]:
+    """Convert an AI-text probability into the simple dashboard labels."""
+    if ai_probability >= 70:
+        return "Likely AI-Generated", "High"
+    if ai_probability >= 40:
+        return "Uncertain", "Medium"
+    return "Likely Human", "Low"
+
+
+def text_explanations(ai_probability: int) -> List[str]:
+    """Return presentation-friendly explanation bullets for text detection."""
+    if ai_probability >= 70:
+        return [
+            "This text has patterns commonly associated with AI-generated writing.",
+            "It should be reviewed before being added to a training dataset.",
+        ]
+    if ai_probability >= 40:
+        return [
+            "The text has mixed signals.",
+            "Manual review is recommended.",
+        ]
+    return [
+        "The text appears lower risk.",
+        "It may still need review depending on the dataset rules.",
+    ]
+
+
+def nested_lookup(data: Dict, path: List[str]):
+    """Safely read a nested value from a JSON dictionary."""
+    current = data
+    for key in path:
+        if not isinstance(current, dict) or key not in current:
+            return None
+        current = current[key]
+    return current
+
+
+def extract_text_ai_probability(payload: Dict) -> int:
+    """Find a usable AI-text probability from detector response fields."""
+    if isinstance(payload, list):
+        rows = payload[0] if payload and isinstance(payload[0], list) else payload
+        if isinstance(rows, list):
+            for item in rows:
+                if not isinstance(item, dict):
+                    continue
+                label = str(item.get("label", "")).lower()
+                score = item.get("score")
+                if label in {"fake", "ai", "ai-generated", "generated", "machine"} and isinstance(score, (int, float)):
+                    return int(round(clamp(float(score) * 100)))
+
+    candidate_paths = [
+        ["score"],
+        ["ai_probability"],
+        ["ai_generated"],
+        ["type", "ai_generated"],
+        ["moderation", "ai_generated"],
+        ["text", "ai_generated"],
+    ]
+
+    for path in candidate_paths:
+        value = nested_lookup(payload, path)
+        if isinstance(value, (int, float)):
+            probability = float(value) * 100 if 0 <= float(value) <= 1 else float(value)
+            return int(round(clamp(probability)))
+
+    raise RuntimeError("The AI text detector did not return a usable probability score.")
+
+
+def analyze_text_with_huggingface(text: str) -> Dict:
+    """Call a Hugging Face hosted AI-text detector while keeping the same output shape."""
+    api_token = os.environ.get("HUGGINGFACE_API_TOKEN", HARDCODED_HUGGINGFACE_API_TOKEN).strip()
+
+    if not api_token:
+        raise RuntimeError("Hugging Face API token is not configured. Add HUGGINGFACE_API_TOKEN to your .env or hosting environment.")
+
+    headers = {
+        "Authorization": f"Bearer {api_token}",
+        "Content-Type": "application/json",
+    }
+    payload = {"inputs": text}
+    response = requests.post(HUGGINGFACE_AI_TEXT_API_URL, headers=headers, json=payload, timeout=SIGHTENGINE_TIMEOUT_SECONDS)
+    try:
+        result = response.json()
+    except ValueError:
+        response.raise_for_status()
+        raise RuntimeError("Hugging Face returned a non-JSON response.")
+
+    if not response.ok:
+        error_message = result.get("error") if isinstance(result, dict) else None
+        raise RuntimeError(error_message or "Hugging Face AI text detector request failed.")
+
+    probability = extract_text_ai_probability(result)
+    verdict, risk_level = classify_text_result(probability)
+    return {
+        "ai_probability": probability,
+        "verdict": verdict,
+        "risk_level": risk_level,
+        "explanations": [
+            "Hugging Face RoBERTa OpenAI Detector analyzed this text for AI-generated writing patterns.",
+            *text_explanations(probability),
+        ],
+        "detector_provider": "Hugging Face RoBERTa OpenAI Detector",
+    }
+
+
 def classify_result(ai_probability: int, scores: Dict[str, int]) -> Tuple[str, str, str]:
     if ai_probability >= 70:
         verdict = "Likely AI-Generated"
@@ -1074,30 +1234,32 @@ def index():
 @app.route("/analyze", methods=["POST"])
 def analyze():
     if "image" not in request.files:
-        return jsonify({"error": f"No image was uploaded. Choose a supported phone image file ({SUPPORTED_FORMAT_LABEL}) and try again."}), 400
+        return jsonify({"error": f"No image or video was uploaded. Choose a supported phone media file ({SUPPORTED_FORMAT_LABEL}) and try again."}), 400
 
     uploaded_file = request.files["image"]
     if not uploaded_file or uploaded_file.filename == "":
-        return jsonify({"error": "No image was selected. Choose an image before scanning."}), 400
+        return jsonify({"error": "No image or video was selected. Choose media before scanning."}), 400
 
     if not allowed_file(uploaded_file.filename, uploaded_file.mimetype):
         return jsonify({"error": f"Unsupported file type. Please upload {SUPPORTED_FORMAT_LABEL}."}), 400
 
     try:
         image_bytes = uploaded_file.read()
-        image = open_uploaded_image(image_bytes, uploaded_file.filename)
+        video_upload = is_video_file(uploaded_file.filename, uploaded_file.mimetype)
+        image = open_video_first_frame(image_bytes, uploaded_file.filename) if video_upload else open_uploaded_image(image_bytes, uploaded_file.filename)
     except UnidentifiedImageError:
-        return jsonify({"error": f"The uploaded file could not be read as an image. Supported formats: {SUPPORTED_FORMAT_LABEL}."}), 400
+        return jsonify({"error": f"The uploaded file could not be read as supported media. Supported formats: {SUPPORTED_FORMAT_LABEL}."}), 400
     except Exception:
-        return jsonify({"error": "The image appears to be corrupted or unsupported."}), 400
+        return jsonify({"error": "The media appears to be corrupted or unsupported."}), 400
 
-    if image.format not in ALLOWED_FORMATS:
+    if not video_upload and image.format not in ALLOWED_FORMATS:
         return jsonify({"error": f"Unsupported image format. Please upload {SUPPORTED_FORMAT_LABEL}."}), 400
 
     try:
         result = analyze_image(image)
         result["analysis_id"] = hashlib.sha256(image_bytes).hexdigest()
         result["uploaded_filename"] = uploaded_file.filename
+        result["input_type"] = "video" if video_upload else "image"
         try:
             external_result = analyze_with_sightengine(image)
             result = apply_external_detector(result, external_result)
@@ -1109,6 +1271,11 @@ def analyze():
             result["explanations"].insert(
                 0,
                 "External trained detector was unavailable, so this result used the local educational scanner only.",
+            )
+        if video_upload:
+            result["explanations"].insert(
+                0,
+                "This video was analyzed by extracting its first frame and running the image authenticity scanner on that frame.",
             )
     except Exception:
         return jsonify({"error": "The scanner could not process this image. Try a smaller or different file."}), 500
@@ -1199,6 +1366,27 @@ def feedback():
             "learning_status": status,
         }
     )
+
+
+@app.route("/analyze-text", methods=["POST"])
+def analyze_text():
+    """Analyze pasted text for likely AI generation using Sightengine."""
+    payload = request.get_json(silent=True) or {}
+    text = str(payload.get("text", "")).strip()
+
+    if not text:
+        return jsonify({"error": "Paste text before running AI text detection."}), 400
+    if len(text) < 30:
+        return jsonify({"error": "Please enter at least 30 characters for a meaningful text scan."}), 400
+
+    try:
+        return jsonify(analyze_text_with_huggingface(text))
+    except requests.RequestException:
+        return jsonify({"error": "The text detector could not reach Hugging Face. Try again later."}), 502
+    except RuntimeError as error:
+        return jsonify({"error": str(error)}), 502
+    except Exception:
+        return jsonify({"error": "The text detector could not process this request."}), 500
 
 
 @app.errorhandler(413)

@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=5">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=6">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
@@ -73,12 +73,12 @@
                     </div>
                 </div>
 
-                <div id="dropZone" class="drop-zone" tabindex="0" role="button" aria-label="Upload an image for analysis">
-                    <input id="imageInput" type="file" accept="image/*,.jpg,.jpeg,.jpe,.jfif,.png,.webp,.heic,.heics,.heif,.heifs,.hif,.avif,.gif,.tif,.tiff,.bmp,.mpo,.dng,image/jpeg,image/pjpeg,image/png,image/webp,image/heic,image/heic-sequence,image/heif,image/heif-sequence,image/avif,image/gif,image/tiff,image/bmp,image/x-adobe-dng,image/dng" hidden>
+                <div id="dropZone" class="drop-zone" tabindex="0" role="button" aria-label="Upload an image or video for analysis">
+                    <input id="imageInput" type="file" accept="image/*,video/*,.jpg,.jpeg,.jpe,.jfif,.png,.webp,.heic,.heics,.heif,.heifs,.hif,.avif,.gif,.tif,.tiff,.bmp,.mpo,.dng,.mp4,.mov,.m4v,.webm,.avi,.mkv,image/jpeg,image/pjpeg,image/png,image/webp,image/heic,image/heic-sequence,image/heif,image/heif-sequence,image/avif,image/gif,image/tiff,image/bmp,image/x-adobe-dng,image/dng,video/mp4,video/quicktime,video/x-m4v,video/webm,video/x-msvideo,video/x-matroska" hidden>
                     <div id="emptyUpload" class="upload-empty">
                         <i class="fa-solid fa-image"></i>
                         <h3>Drop image here</h3>
-                        <p>Phone-ready support for JPEG, PNG, WebP, HEIC, HEIF, AVIF, GIF, TIFF, BMP, MPO, and DNG</p>
+                        <p>Phone-ready support for images plus MP4, MOV, M4V, WebM, AVI, and MKV video first-frame scans</p>
                         <button id="chooseButton" class="control-button" type="button">
                             <i class="fa-solid fa-folder-open"></i>
                             Choose Image
@@ -86,10 +86,11 @@
                     </div>
                     <div id="previewWrap" class="preview-wrap" hidden>
                         <img id="imagePreview" src="" alt="Uploaded image preview">
+                        <video id="videoPreview" muted playsinline controls hidden></video>
                         <div id="previewFallback" class="preview-fallback" hidden>
                             <i class="fa-solid fa-file-image"></i>
                             <h3>Preview unavailable</h3>
-                            <p>This mobile image format can still be analyzed.</p>
+                            <p>This mobile media format can still be analyzed.</p>
                         </div>
                         <div class="preview-overlay">
                             <span id="fileName">Image ready</span>
@@ -273,7 +274,7 @@
                         <span>Select Multiple Images</span>
                         <small>Run the same authenticity scan across a small dataset sample.</small>
                     </label>
-                    <input id="batchInput" type="file" multiple accept="image/*" hidden>
+                    <input id="batchInput" type="file" multiple accept="image/*,video/*,.jpg,.jpeg,.png,.webp,.heic,.heif,.avif,.gif,.tif,.tiff,.bmp,.mpo,.dng,.mp4,.mov,.m4v,.webm,.avi,.mkv" hidden>
 
                     <div class="batch-actions">
                         <button id="analyzeBatchButton" class="analyze-button compact" type="button" disabled>
@@ -420,6 +421,51 @@
             </article>
         </section>
 
+        <section id="text-detection" class="panel text-detection-panel">
+            <div class="section-heading">
+                <span class="icon-pill"><i class="fa-solid fa-align-left"></i></span>
+                <div>
+                    <p class="eyebrow">Dataset Text Intake</p>
+                    <h2>AI Text Detection</h2>
+                    <p class="section-subtitle">Scan written content for possible AI-generated text before adding it to a training dataset.</p>
+                </div>
+            </div>
+
+            <div class="text-detection-layout">
+                <div class="text-input-card">
+                    <textarea id="textDetectionInput" placeholder="Paste text here..." aria-label="Paste text for AI detection"></textarea>
+                    <button id="analyzeTextButton" class="analyze-button compact" type="button">
+                        <span class="button-content">
+                            <i class="fa-solid fa-magnifying-glass-chart"></i>
+                            Analyze Text
+                        </span>
+                        <span class="loader" aria-hidden="true"></span>
+                    </button>
+                    <p id="textDetectionMessage" class="message-box" role="status" aria-live="polite"></p>
+                </div>
+
+                <div id="textResultCard" class="text-result-card" hidden>
+                    <div class="text-probability-row">
+                        <div>
+                            <span>AI Text Probability</span>
+                            <strong id="textProbabilityValue">--</strong>
+                        </div>
+                        <div id="textVerdictBadge" class="verdict-badge neutral">Awaiting Text</div>
+                    </div>
+                    <div class="bar-track text-risk-track">
+                        <div id="textProbabilityBar" class="bar-fill"></div>
+                    </div>
+                    <div class="text-risk-line">
+                        <span>Risk Level</span>
+                        <strong id="textRiskValue">--</strong>
+                    </div>
+                    <ul id="textExplanationList" class="explanation-list">
+                        <li>Paste text to generate a report.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
         <aside id="chatWidget" class="chat-widget" aria-label="sAIfty Assistant">
             <button id="chatToggle" class="chat-toggle" type="button" aria-label="Open sAIfty Assistant" aria-expanded="false">
                 <i class="fa-solid fa-message"></i>
@@ -460,6 +506,6 @@
         </aside>
     </main>
 
-    <script src="{{ url_for('static', filename='script.js') }}?v=5"></script>
+    <script src="{{ url_for('static', filename='script.js') }}?v=6"></script>
 </body>
 </html>

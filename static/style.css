@@ -371,6 +371,13 @@ h3 {
     margin-bottom: 14px;
 }
 
+.section-subtitle {
+    max-width: 720px;
+    margin: 6px 0 0;
+    color: var(--muted);
+    line-height: 1.5;
+}
+
 .drop-zone {
     position: relative;
     display: grid;
@@ -421,7 +428,8 @@ h3 {
     inset: 0;
 }
 
-.preview-wrap img {
+.preview-wrap img,
+.preview-wrap video {
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -757,6 +765,85 @@ h3 {
 
 .dataset-panel {
     margin-top: 20px;
+}
+
+.text-detection-panel {
+    margin-top: 20px;
+    padding: 22px;
+}
+
+.text-detection-layout {
+    display: grid;
+    grid-template-columns: minmax(280px, 0.9fr) minmax(320px, 1.1fr);
+    gap: 18px;
+}
+
+.text-input-card,
+.text-result-card {
+    min-width: 0;
+    padding: 16px;
+    border: 1px solid rgba(125, 224, 255, 0.16);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.045);
+}
+
+.text-input-card textarea {
+    width: 100%;
+    min-height: 210px;
+    resize: vertical;
+    border: 1px solid rgba(125, 224, 255, 0.22);
+    border-radius: 8px;
+    color: var(--text);
+    background: rgba(2, 7, 17, 0.58);
+    padding: 14px;
+    font: inherit;
+    line-height: 1.5;
+    outline: none;
+}
+
+.text-input-card textarea:focus {
+    border-color: var(--cyan);
+    box-shadow: 0 0 0 3px rgba(40, 215, 255, 0.12);
+}
+
+.text-probability-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+.text-probability-row span,
+.text-risk-line span {
+    display: block;
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.text-probability-row strong {
+    display: block;
+    margin-top: 8px;
+    font-family: "Space Grotesk", Inter, sans-serif;
+    font-size: 2rem;
+}
+
+.text-risk-track {
+    height: 14px;
+    margin-bottom: 14px;
+}
+
+.text-risk-line {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+.text-risk-line strong {
+    color: #f5fbff;
 }
 
 .workflow-grid {
@@ -1382,6 +1469,7 @@ h3 {
     .insight-grid,
     .info-grid,
     .batch-layout,
+    .text-detection-layout,
     .workflow-grid {
         grid-template-columns: 1fr;
     }
@@ -1422,8 +1510,15 @@ h3 {
     .explain-panel,
     .dataset-panel,
     .learning-panel,
+    .text-detection-panel,
     .info-grid .panel {
         padding: 16px;
+    }
+
+    .text-probability-row,
+    .text-risk-line {
+        align-items: flex-start;
+        flex-direction: column;
     }
 
     .topbar {
