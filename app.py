@@ -799,13 +799,6 @@ def recalibrate_result(result: Dict, weights: Dict[str, float], bias: float) -> 
     previous_probability = int(round(clamp(float(updated.get("ai_probability", 0)))))
     recalculated_probability = weighted_probability(scores, weights, bias)
 
-    external_probability = scores.get("external_score")
-    if external_probability is not None:
-        if external_probability >= 88:
-            recalculated_probability = max(recalculated_probability, external_probability - 3)
-        elif external_probability <= 12:
-            recalculated_probability = min(recalculated_probability, external_probability + 6)
-
     local_scores = {key: value for key, value in scores.items() if key != "external_score"}
     verdict, confidence, risk_level = classify_result(recalculated_probability, local_scores)
 
@@ -993,12 +986,19 @@ def classify_result(ai_probability: int, scores: Dict[str, int]) -> Tuple[str, s
         verdict = "Likely Real"
         risk_level = "Low"
 
-    signal_values = np.array(list(scores.values()), dtype=np.float32)
+    signal_values = np.array(list(scores.values()) or [ai_probability], dtype=np.float32)
     disagreement = float(np.std(signal_values))
     distance_from_boundary = min(abs(ai_probability - 40), abs(ai_probability - 70))
 
+    # Standalone judge HTML does not calculate every backend-only signal, such
+    # as frequency_score, so confidence must work with partial score sets.
     visual_scores = np.array(
-        [scores[key] for key in ["texture_score", "frequency_score", "edge_score", "compression_score", "pattern_score"]],
+        [
+            scores[key]
+            for key in ["texture_score", "frequency_score", "edge_score", "compression_score", "pattern_score"]
+            if key in scores
+        ]
+        or [ai_probability],
         dtype=np.float32,
     )
     strong_visuals = int(np.sum(visual_scores >= 56))

@@ -1315,6 +1315,19 @@
         }
 
         /*
+            Reads JSON from a server response, but gives a clearer error if the
+            server accidentally returns an HTML error page.
+        */
+        async function readJsonResponse(response) {
+            const text = await response.text();
+            try {
+                return JSON.parse(text);
+            } catch (error) {
+                throw new Error(`Server returned ${response.status} ${response.statusText || ""} instead of JSON.`);
+            }
+        }
+
+        /*
             Fetches the latest weights from the main webserver.
             This is what lets the judge HTML benefit from feedback collected by
             the hosted Flask version, even though the HTML itself is static.
@@ -1322,7 +1335,7 @@
         async function loadRemoteLearningStatus() {
             try {
                 const response = await fetch(`${LEARNING_SERVER_URL}/learning-status`);
-                const status = await response.json();
+                const status = await readJsonResponse(response);
                 if (!response.ok) throw new Error(status.error || "Learning status unavailable.");
 
                 state.learning.connected = true;
@@ -1839,7 +1852,7 @@
                         result: resultForLearningServer(state.currentResult),
                     }),
                 });
-                const payload = await response.json();
+                const payload = await readJsonResponse(response);
                 if (!response.ok) throw new Error(payload.error || "Feedback could not be saved.");
 
                 state.learning.connected = true;
