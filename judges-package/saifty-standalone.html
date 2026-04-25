@@ -203,7 +203,7 @@
         .grid { grid-template-columns: minmax(300px, 0.9fr) minmax(320px, 1.1fr); }
         .insight-grid, .info-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
-        .upload-panel, .results-panel, .chart-panel, .explain-panel, .batch-panel, .info-grid .panel {
+        .upload-panel, .results-panel, .chart-panel, .explain-panel, .batch-panel, .learning-panel, .info-grid .panel {
             padding: 22px;
         }
 
@@ -423,6 +423,130 @@
         .score-row strong {
             font-size: 0.88rem;
             text-align: right;
+        }
+
+        .feedback-panel {
+            margin-top: 24px;
+            padding: 16px;
+            border: 1px solid rgba(125, 224, 255, 0.18);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.045);
+        }
+
+        .feedback-panel .section-heading {
+            margin-bottom: 14px;
+        }
+
+        .feedback-actions {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .feedback-actions button {
+            min-height: 42px;
+            padding: 0 10px;
+            border: 1px solid rgba(125, 224, 255, 0.22);
+            border-radius: 8px;
+            color: #dff6ff;
+            background: rgba(255, 255, 255, 0.06);
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 900;
+        }
+
+        .feedback-actions button:hover:not(:disabled) {
+            border-color: rgba(40, 215, 255, 0.58);
+            background: rgba(40, 215, 255, 0.11);
+        }
+
+        .feedback-actions button:disabled {
+            cursor: wait;
+            opacity: 0.55;
+        }
+
+        .feedback-message {
+            min-height: 22px;
+            margin: 12px 0 0;
+            color: #bdfce5;
+            font-size: 0.9rem;
+            font-weight: 800;
+        }
+
+        .feedback-message.error {
+            color: #ffb1bf;
+        }
+
+        .learning-panel {
+            margin-top: 20px;
+        }
+
+        .learning-summary {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .learning-summary div, .weight-row {
+            padding: 12px;
+            border: 1px solid rgba(125, 224, 255, 0.16);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.045);
+        }
+
+        .learning-summary span {
+            display: block;
+            color: var(--muted);
+            font-size: 0.72rem;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .learning-summary strong {
+            display: block;
+            margin-top: 8px;
+            font-size: 1.08rem;
+        }
+
+        .learning-weights {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .learning-weights p {
+            grid-column: 1 / -1;
+            margin: 0;
+            color: var(--muted);
+        }
+
+        .weight-row span {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            color: #d9eef8;
+            font-size: 0.78rem;
+            font-weight: 900;
+        }
+
+        .weight-row em {
+            color: var(--green);
+            font-style: normal;
+        }
+
+        .weight-track {
+            height: 9px;
+            margin-top: 10px;
+            overflow: hidden;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.09);
+        }
+
+        .weight-fill {
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, var(--cyan), var(--green));
         }
 
         .chart-wrap {
@@ -700,20 +824,21 @@
             .result-layout {
                 grid-template-columns: 1fr;
             }
-            .summary, .batch-summary {
+            .summary, .batch-summary, .feedback-actions, .learning-summary, .learning-weights {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
         }
 
         @media (max-width: 640px) {
             .shell { width: min(100% - 20px, 1180px); padding-top: 10px; }
-            .hero, .upload-panel, .results-panel, .chart-panel, .explain-panel, .batch-panel, .info-grid .panel {
+            .hero, .upload-panel, .results-panel, .chart-panel, .explain-panel, .batch-panel, .learning-panel, .info-grid .panel {
                 padding: 16px;
             }
             .topbar { align-items: flex-start; flex-direction: column; }
             .score-row { grid-template-columns: 1fr 40px; }
             .score-row .bar-track { grid-column: 1 / -1; grid-row: 2; }
             .batch-actions { grid-template-columns: 1fr; }
+            .feedback-actions, .learning-summary, .learning-weights { grid-template-columns: 1fr; }
             .chat-widget { right: 10px; bottom: 10px; }
             .chat-window { width: calc(100vw - 20px); max-height: calc(100vh - 96px); }
         }
@@ -806,7 +931,43 @@
                     <div class="score-row"><span>Color</span><div class="bar-track"><div id="colorBar" class="bar-fill"></div></div><strong id="colorScore">--</strong></div>
                     <div class="score-row"><span>Patterns</span><div class="bar-track"><div id="patternBar" class="bar-fill"></div></div><strong id="patternScore">--</strong></div>
                 </div>
+
+                <section id="feedbackPanel" class="feedback-panel" hidden>
+                    <div class="section-heading">
+                        <span class="icon-pill">✓</span>
+                        <div>
+                            <p class="eyebrow">Remote Learning</p>
+                            <h3>Was this prediction correct?</h3>
+                        </div>
+                    </div>
+                    <div class="feedback-actions">
+                        <button type="button" data-feedback="correct">Correct</button>
+                        <button type="button" data-feedback="wrong_real">Wrong, this was real</button>
+                        <button type="button" data-feedback="wrong_ai">Wrong, this was AI-generated</button>
+                        <button type="button" data-feedback="unsure">Unsure</button>
+                    </div>
+                    <p id="feedbackMessage" class="feedback-message" aria-live="polite"></p>
+                </section>
             </article>
+        </section>
+
+        <section class="panel learning-panel">
+            <div class="section-heading">
+                <span class="icon-pill">≙</span>
+                <div>
+                    <p class="eyebrow">Webserver Calibration</p>
+                    <h2>Live Learning Status</h2>
+                </div>
+            </div>
+            <div class="learning-summary">
+                <div><span>Connection</span><strong id="learningConnection">Checking</strong></div>
+                <div><span>Feedback Saved</span><strong id="feedbackCount">0</strong></div>
+                <div><span>Verified Examples</span><strong id="verifiedExamplesCount">0</strong></div>
+                <div><span>Calibration Bias</span><strong id="calibrationBias">0.0</strong></div>
+            </div>
+            <div id="learningWeights" class="learning-weights">
+                <p>Loading weights from the webserver...</p>
+            </div>
         </section>
 
         <!--
@@ -977,6 +1138,23 @@
         */
         const HARDCODED_SIGHTENGINE_API_USER = "1953832820";
         const HARDCODED_SIGHTENGINE_API_SECRET = "5mThKLTViPtAes8ub8xhSJMbHhLaZAqD";
+        /*
+            Change this to your Render URL after deployment, for example:
+            const LEARNING_SERVER_URL = "https://your-render-app.onrender.com";
+
+            While testing locally, the standalone file reads and writes learning
+            data through the Flask server running through render
+        */
+        const LEARNING_SERVER_URL = "https://saifty-image-authenticity-scanner.onrender.com";
+        const DEFAULT_LEARNING_WEIGHTS = {
+            external_score: 0.55,
+            metadata_score: 0.09,
+            texture_score: 0.08,
+            edge_score: 0.06,
+            compression_score: 0.06,
+            pattern_score: 0.05,
+            color_score: 0.04,
+        };
 
         // Small helper for selecting elements by ID.
         const $ = (id) => document.getElementById(id);
@@ -988,7 +1166,18 @@
             Keeping this in one object makes it easier for multiple functions
             to access the current upload information.
         */
-        const state = { selectedFile: null, batchFiles: [] };
+        const state = {
+            selectedFile: null,
+            batchFiles: [],
+            currentResult: null,
+            learning: {
+                connected: false,
+                weights: { ...DEFAULT_LEARNING_WEIGHTS },
+                calibrationBias: 0,
+                feedbackCount: 0,
+                verifiedExamplesCount: 0,
+            },
+        };
 
         /*
             This object connects the JavaScript score names to the matching
@@ -1042,6 +1231,110 @@
         */
         function setMessage(text) {
             $("message").textContent = text;
+        }
+
+        /*
+            Reads a nested value safely.
+            This is used when the HTML receives JSON from the Flask server and
+            needs to handle missing optional fields without crashing.
+        */
+        function safeNumber(value, fallback = 0) {
+            const numeric = Number(value);
+            return Number.isFinite(numeric) ? numeric : fallback;
+        }
+
+        /*
+            Converts the webserver's learning-status response into the simpler
+            weight object used by this standalone file.
+        */
+        function weightsFromStatus(status) {
+            const nextWeights = { ...DEFAULT_LEARNING_WEIGHTS };
+            (status.weights || []).forEach((item) => {
+                if (item.key in nextWeights) {
+                    nextWeights[item.key] = safeNumber(item.weight, nextWeights[item.key]);
+                }
+            });
+            return nextWeights;
+        }
+
+        /*
+            Weighted probability helper.
+            It uses whichever score layers are available. If Sightengine is
+            available, external_score is included. If not, the local signals are
+            still combined using the current webserver calibration.
+        */
+        function calibratedProbability(scores, externalProbability = null) {
+            const weights = state.learning.weights;
+            const available = {
+                metadata_score: scores.metadata,
+                texture_score: scores.texture,
+                edge_score: scores.edge,
+                compression_score: scores.compression,
+                pattern_score: scores.pattern,
+                color_score: scores.color,
+            };
+
+            if (Number.isFinite(externalProbability)) {
+                available.external_score = externalProbability;
+            }
+
+            let weightedSum = 0;
+            let weightTotal = 0;
+            Object.entries(available).forEach(([key, value]) => {
+                const weight = safeNumber(weights[key], 0);
+                if (Number.isFinite(value) && weight > 0) {
+                    weightedSum += value * weight;
+                    weightTotal += weight;
+                }
+            });
+
+            const probability = weightTotal ? weightedSum / weightTotal : 0;
+            return Math.round(clamp(probability + safeNumber(state.learning.calibrationBias, 0)));
+        }
+
+        /*
+            Shows the current remote calibration status on the page.
+            If the Flask/Render server is offline, the standalone file continues
+            with built-in default weights and clearly labels the connection.
+        */
+        function renderLearningStatus(status = null, connected = state.learning.connected) {
+            $("learningConnection").textContent = connected ? "Connected" : "Offline";
+            $("feedbackCount").textContent = String(status?.feedback_count ?? state.learning.feedbackCount ?? 0);
+            $("verifiedExamplesCount").textContent = String(status?.verified_examples_count ?? state.learning.verifiedExamplesCount ?? 0);
+            $("calibrationBias").textContent = safeNumber(status?.calibration_bias ?? state.learning.calibrationBias, 0).toFixed(1);
+            $("learningWeights").innerHTML = "";
+
+            Object.entries(state.learning.weights).forEach(([key, weight]) => {
+                const label = key.replace("_score", "").replace("external", "trained api").replaceAll("_", " ");
+                const percent = Math.round(weight * 100);
+                const row = document.createElement("div");
+                row.className = "weight-row";
+                row.innerHTML = `<span><strong>${label}</strong><em>${percent}%</em></span><div class="weight-track"><div class="weight-fill" style="width:${percent}%"></div></div>`;
+                $("learningWeights").appendChild(row);
+            });
+        }
+
+        /*
+            Fetches the latest weights from the main webserver.
+            This is what lets the judge HTML benefit from feedback collected by
+            the hosted Flask version, even though the HTML itself is static.
+        */
+        async function loadRemoteLearningStatus() {
+            try {
+                const response = await fetch(`${LEARNING_SERVER_URL}/learning-status`);
+                const status = await response.json();
+                if (!response.ok) throw new Error(status.error || "Learning status unavailable.");
+
+                state.learning.connected = true;
+                state.learning.weights = weightsFromStatus(status);
+                state.learning.calibrationBias = safeNumber(status.calibration_bias, 0);
+                state.learning.feedbackCount = status.feedback_count || 0;
+                state.learning.verifiedExamplesCount = status.verified_examples_count || 0;
+                renderLearningStatus(status, true);
+            } catch (error) {
+                state.learning.connected = false;
+                renderLearningStatus(null, false);
+            }
         }
 
         /*
@@ -1267,17 +1560,11 @@
             const pattern = clamp(Math.max(0, 0.36 - blockStd / (blockMean + 0.01)) * 150);
             /*
                 Weighted final local AI probability.
-                Texture is weighted slightly more because smoothness/detail is
-                one of the easier local signals to measure from raw pixels.
-                The other signals still matter, but no single signal controls
-                the entire result. This makes the detector more balanced.
+                Instead of hardcoding one permanent formula, this standalone
+                file asks the Flask/Render webserver for the latest adaptive
+                calibration weights and uses them here. If the server is
+                offline, DEFAULT_LEARNING_WEIGHTS are used.
             */
-            let aiProbability = clamp(metadata * 0.18 + texture * 0.22 + edge * 0.18 + compression * 0.18 + color * 0.12 + pattern * 0.12);
-
-            const squareGeneratorCanvas = Math.abs(width / height - 1) < 0.04 && (image.width % 64 === 0 || image.height % 64 === 0);
-            if (squareGeneratorCanvas && aiProbability > 38) aiProbability = clamp(aiProbability + 8);
-
-            const { verdict, risk, action } = classify(aiProbability);
             const scores = {
                 metadata: Math.round(metadata),
                 texture: Math.round(texture),
@@ -1286,6 +1573,12 @@
                 color: Math.round(color),
                 pattern: Math.round(pattern),
             };
+            let aiProbability = calibratedProbability(scores);
+
+            const squareGeneratorCanvas = Math.abs(width / height - 1) < 0.04 && (image.width % 64 === 0 || image.height % 64 === 0);
+            if (squareGeneratorCanvas && aiProbability > 38) aiProbability = clamp(aiProbability + 8);
+
+            const { verdict, risk, action } = classify(aiProbability);
 
             const explanations = [];
             if (metadata >= 60) explanations.push("Camera metadata is not available in this standalone browser scan, increasing review risk.");
@@ -1396,17 +1689,22 @@
         function mergeSightengineResult(localResult, apiResult) {
             if (!apiResult) return localResult;
 
-            const { verdict, risk, action } = classify(apiResult.aiProbability);
+            const calibrated = calibratedProbability(localResult.scores, apiResult.aiProbability);
+            const { verdict, risk, action } = classify(calibrated);
             const explanations = [
                 `Sightengine trained detector estimated ${apiResult.aiProbability}% AI probability.${apiResult.generators.length ? ` Top generator matches: ${apiResult.generators.join(", ")}.` : ""}`,
+                state.learning.connected
+                    ? "Final probability was recalculated with live weights from the webserver."
+                    : "Final probability used built-in fallback weights because the learning server was offline.",
                 ...localResult.explanations,
             ];
 
             return {
                 ...localResult,
-                aiProbability: apiResult.aiProbability,
+                aiProbability: calibrated,
+                externalAiProbability: apiResult.aiProbability,
                 verdict,
-                confidence: apiResult.aiProbability <= 15 || apiResult.aiProbability >= 85 ? "High" : "Medium",
+                confidence: calibrated <= 15 || calibrated >= 85 ? "High" : "Medium",
                 risk,
                 action,
                 explanations,
@@ -1425,6 +1723,7 @@
             chart rows, and the explanation list.
         */
         function renderResult(result) {
+            state.currentResult = result;
             $("gauge").style.setProperty("--score", result.aiProbability);
             $("gauge").style.setProperty("--gauge-color", scoreColor(result.aiProbability));
             $("probabilityValue").textContent = `${result.aiProbability}%`;
@@ -1443,6 +1742,9 @@
 
             renderChart(result.scores);
             renderExplanations(result.explanations);
+            $("feedbackPanel").hidden = false;
+            $("feedbackMessage").textContent = "";
+            $("feedbackMessage").className = "feedback-message";
         }
 
         // Majority AI-generated: simple no-library chart so the file stays self-contained.
@@ -1476,6 +1778,88 @@
         }
 
         /*
+            Converts this standalone result shape into the Flask server result
+            shape. The backend feedback endpoint already knows how to save and
+            recalibrate this snake_case version.
+        */
+        function resultForLearningServer(result) {
+            return {
+                analysis_id: result.analysisId,
+                uploaded_filename: result.fileName,
+                verdict: result.verdict,
+                ai_probability: result.aiProbability,
+                confidence: result.confidence,
+                risk_level: result.risk,
+                metadata_score: result.scores.metadata,
+                texture_score: result.scores.texture,
+                edge_score: result.scores.edge,
+                compression_score: result.scores.compression,
+                pattern_score: result.scores.pattern,
+                color_score: result.scores.color,
+                external_ai_probability: result.externalAiProbability ?? null,
+                explanations: result.explanations || [],
+            };
+        }
+
+        /*
+            Converts the Flask server's recalibrated result back into the
+            standalone display format so the judge HTML updates immediately.
+        */
+        function resultFromLearningServer(serverResult, previousResult) {
+            return {
+                ...previousResult,
+                verdict: serverResult.verdict || previousResult.verdict,
+                aiProbability: safeNumber(serverResult.ai_probability, previousResult.aiProbability),
+                confidence: serverResult.confidence || previousResult.confidence,
+                risk: serverResult.risk_level || previousResult.risk,
+                action: classify(safeNumber(serverResult.ai_probability, previousResult.aiProbability)).action,
+                explanations: serverResult.explanations || previousResult.explanations,
+            };
+        }
+
+        /*
+            Sends judge feedback to the main webserver.
+            The server saves the verified example, updates adaptive weights,
+            and returns a recalculated result. This lets the static judge HTML
+            participate in the same learning database as the Flask site.
+        */
+        async function submitRemoteFeedback(correction) {
+            if (!state.currentResult) return;
+
+            $("feedbackMessage").textContent = "Sending feedback to webserver...";
+            $("feedbackMessage").className = "feedback-message";
+            document.querySelectorAll("[data-feedback]").forEach((button) => { button.disabled = true; });
+
+            try {
+                const response = await fetch(`${LEARNING_SERVER_URL}/feedback`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        correction,
+                        result: resultForLearningServer(state.currentResult),
+                    }),
+                });
+                const payload = await response.json();
+                if (!response.ok) throw new Error(payload.error || "Feedback could not be saved.");
+
+                state.learning.connected = true;
+                state.learning.weights = weightsFromStatus(payload.learning_status);
+                state.learning.calibrationBias = safeNumber(payload.learning_status.calibration_bias, 0);
+                state.learning.feedbackCount = payload.learning_status.feedback_count || 0;
+                state.learning.verifiedExamplesCount = payload.learning_status.verified_examples_count || 0;
+                renderLearningStatus(payload.learning_status, true);
+                renderResult(resultFromLearningServer(payload.updated_result, state.currentResult));
+                $("feedbackMessage").textContent = payload.message || "Model calibration updated.";
+                setMessage("Model calibration updated through the webserver.");
+            } catch (error) {
+                $("feedbackMessage").textContent = `Learning server unavailable: ${error.message}`;
+                $("feedbackMessage").className = "feedback-message error";
+            } finally {
+                document.querySelectorAll("[data-feedback]").forEach((button) => { button.disabled = false; });
+            }
+        }
+
+        /*
             ============================================================
             MAIN ANALYSIS PIPELINE
             ============================================================
@@ -1503,7 +1887,10 @@
         */
         async function analyzeFile(file) {
             const image = await loadImage(file);
-            const localResult = analyzePixels(file, image);
+            const localResult = {
+                ...analyzePixels(file, image),
+                analysisId: `${file.name}-${file.size}-${file.lastModified}`,
+            };
 
             if (!hasApiCredentials()) {
                 return localResult;
@@ -1531,11 +1918,13 @@
         */
         function selectFile(file) {
             state.selectedFile = file;
+            state.currentResult = null;
             $("fileName").textContent = file.name;
             $("imagePreview").src = URL.createObjectURL(file);
             $("preview").hidden = false;
             $("emptyUpload").hidden = true;
             $("analyzeButton").disabled = false;
+            $("feedbackPanel").hidden = true;
             setMessage("Image ready. Start analysis when you are ready.");
         }
 
@@ -1564,7 +1953,8 @@
         $("analyzeButton").addEventListener("click", async () => {
             if (!state.selectedFile) return;
             $("analyzeButton").disabled = true;
-            setMessage("Checking Sightengine, then building local explanation signals...");
+            await loadRemoteLearningStatus();
+            setMessage("Checking Sightengine, applying webserver weights, then building local explanation signals...");
             try {
                 const result = await analyzeFile(state.selectedFile);
                 renderResult(result);
@@ -1610,6 +2000,7 @@
             ============================================================
         */
         $("analyzeBatchButton").addEventListener("click", async () => {
+            await loadRemoteLearningStatus();
             const results = [];
             $("batchResults").innerHTML = "";
             $("analyzeBatchButton").disabled = true;
@@ -1627,6 +2018,12 @@
             }
             $("batchProgress").textContent = `Finished analyzing ${state.batchFiles.length} image(s).`;
             $("analyzeBatchButton").disabled = false;
+        });
+
+        document.querySelectorAll("[data-feedback]").forEach((button) => {
+            button.addEventListener("click", () => {
+                submitRemoteFeedback(button.dataset.feedback);
+            });
         });
 
         // Partially AI-assisted: appends one color-coded row to the batch results table.
@@ -1723,6 +2120,8 @@
                 setTimeout(() => addChat(assistantReply(button.dataset.question)), 160);
             });
         });
+
+        loadRemoteLearningStatus();
     </script>
 </body>
 </html>
