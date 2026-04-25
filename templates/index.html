@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>sAIfty+ Image Authenticity Scanner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=4">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="scanlines"></div>
+    <main class="app-shell">
+        <header class="hero panel">
+            <nav class="topbar">
+                <a class="brand" href="#" aria-label="sAIfty+ dashboard home">
+                    <span class="brand-mark"><i class="fa-solid fa-shield-halved"></i></span>
+                    <span>sAIfty+</span>
+                </a>
+                <div class="model-status" aria-label="Model status">
+                    <span class="pulse"></span>
+                    Model Online
+                </div>
+            </nav>
+
+            <section class="hero-grid">
+                <div>
+                    <p class="eyebrow">Dataset Integrity Defense</p>
+                    <h1>sAIfty+ Image Authenticity Scanner</h1>
+                    <p class="hero-copy">Detecting AI-generated images before they corrupt training data.</p>
+                    <div class="hero-actions">
+                        <a href="#scanner" class="primary-link">
+                            <i class="fa-solid fa-fingerprint"></i>
+                            Start Scan
+                        </a>
+                        <a href="#dataset-protection" class="secondary-link">
+                            <i class="fa-solid fa-database"></i>
+                            Protect Dataset
+                        </a>
+                    </div>
+                </div>
+
+                <div class="threat-card">
+                    <div class="threat-header">
+                        <span>Live Integrity Mesh</span>
+                        <strong>AI Inbreeding Risk</strong>
+                    </div>
+                    <div class="radar">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                        <i class="fa-solid fa-crosshairs"></i>
+                    </div>
+                    <div class="threat-metrics">
+                        <span><strong>7</strong> signal layers</span>
+                        <span><strong>1200px</strong> fast resize</span>
+                        <span><strong>0ms</strong> cloud AI dependency</span>
+                    </div>
+                </div>
+            </section>
+        </header>
+
+        <section id="scanner" class="dashboard-grid">
+            <article class="panel upload-panel">
+                <div class="section-heading">
+                    <span class="icon-pill"><i class="fa-solid fa-cloud-arrow-up"></i></span>
+                    <div>
+                        <p class="eyebrow">Image Intake</p>
+                        <h2>Upload Evidence</h2>
+                    </div>
+                </div>
+
+                <div id="dropZone" class="drop-zone" tabindex="0" role="button" aria-label="Upload an image for analysis">
+                    <input id="imageInput" type="file" accept="image/*,.jpg,.jpeg,.jpe,.jfif,.png,.webp,.heic,.heics,.heif,.heifs,.hif,.avif,.gif,.tif,.tiff,.bmp,.mpo,.dng,image/jpeg,image/pjpeg,image/png,image/webp,image/heic,image/heic-sequence,image/heif,image/heif-sequence,image/avif,image/gif,image/tiff,image/bmp,image/x-adobe-dng,image/dng" hidden>
+                    <div id="emptyUpload" class="upload-empty">
+                        <i class="fa-solid fa-image"></i>
+                        <h3>Drop image here</h3>
+                        <p>Phone-ready support for JPEG, PNG, WebP, HEIC, HEIF, AVIF, GIF, TIFF, BMP, MPO, and DNG</p>
+                        <button id="chooseButton" class="control-button" type="button">
+                            <i class="fa-solid fa-folder-open"></i>
+                            Choose Image
+                        </button>
+                    </div>
+                    <div id="previewWrap" class="preview-wrap" hidden>
+                        <img id="imagePreview" src="" alt="Uploaded image preview">
+                        <div id="previewFallback" class="preview-fallback" hidden>
+                            <i class="fa-solid fa-file-image"></i>
+                            <h3>Preview unavailable</h3>
+                            <p>This mobile image format can still be analyzed.</p>
+                        </div>
+                        <div class="preview-overlay">
+                            <span id="fileName">Image ready</span>
+                            <button id="replaceButton" class="ghost-button" type="button">
+                                <i class="fa-solid fa-rotate"></i>
+                                Replace
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="analyzeButton" class="analyze-button" type="button" disabled>
+                    <span class="button-content">
+                        <i class="fa-solid fa-magnifying-glass-chart"></i>
+                        Analyze Image
+                    </span>
+                    <span class="loader" aria-hidden="true"></span>
+                </button>
+
+                <div id="messageBox" class="message-box" role="status" aria-live="polite"></div>
+            </article>
+
+            <article class="panel results-panel">
+                <div class="section-heading">
+                    <span class="icon-pill"><i class="fa-solid fa-gauge-high"></i></span>
+                    <div>
+                        <p class="eyebrow">Authenticity Result</p>
+                        <h2>Results Dashboard</h2>
+                    </div>
+                </div>
+
+                <div class="result-layout">
+                    <div class="gauge-card">
+                        <div id="probabilityGauge" class="probability-gauge" style="--score: 0; --gauge-color: #20f7a4;">
+                            <div class="gauge-inner">
+                                <span id="probabilityValue">--</span>
+                                <small>AI Probability</small>
+                            </div>
+                        </div>
+                        <div id="verdictBadge" class="verdict-badge neutral">Awaiting Scan</div>
+                    </div>
+
+                    <div class="summary-grid">
+                        <div class="stat-tile">
+                            <span>Confidence</span>
+                            <strong id="confidenceValue">--</strong>
+                        </div>
+                        <div class="stat-tile">
+                            <span>Risk Level</span>
+                            <strong id="riskValue">--</strong>
+                        </div>
+                        <div class="stat-tile">
+                            <span>Training Action</span>
+                            <strong id="datasetAction">Hold</strong>
+                        </div>
+                        <div class="stat-tile">
+                            <span>Detector Source</span>
+                            <strong id="detectorProvider">Local</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="score-bars" aria-label="Analysis sub-scores">
+                    <div id="externalScoreRow" class="score-row" hidden>
+                        <span><i class="fa-solid fa-brain"></i> Trained API Model</span>
+                        <div class="bar-track"><div id="externalBar" class="bar-fill"></div></div>
+                        <strong id="externalScore">--</strong>
+                    </div>
+                    <div class="score-row">
+                        <span><i class="fa-solid fa-camera-retro"></i> Metadata</span>
+                        <div class="bar-track"><div id="metadataBar" class="bar-fill"></div></div>
+                        <strong id="metadataScore">--</strong>
+                    </div>
+                    <div class="score-row">
+                        <span><i class="fa-solid fa-wave-square"></i> Texture</span>
+                        <div class="bar-track"><div id="textureBar" class="bar-fill"></div></div>
+                        <strong id="textureScore">--</strong>
+                    </div>
+                    <div class="score-row">
+                        <span><i class="fa-solid fa-signal"></i> Frequency</span>
+                        <div class="bar-track"><div id="frequencyBar" class="bar-fill"></div></div>
+                        <strong id="frequencyScore">--</strong>
+                    </div>
+                    <div class="score-row">
+                        <span><i class="fa-solid fa-compress"></i> Compression</span>
+                        <div class="bar-track"><div id="compressionBar" class="bar-fill"></div></div>
+                        <strong id="compressionScore">--</strong>
+                    </div>
+                    <div class="score-row">
+                        <span><i class="fa-solid fa-bezier-curve"></i> Edge Consistency</span>
+                        <div class="bar-track"><div id="edgeBar" class="bar-fill"></div></div>
+                        <strong id="edgeScore">--</strong>
+                    </div>
+                    <div class="score-row">
+                        <span><i class="fa-solid fa-border-all"></i> Pattern Consistency</span>
+                        <div class="bar-track"><div id="patternBar" class="bar-fill"></div></div>
+                        <strong id="patternScore">--</strong>
+                    </div>
+                    <div class="score-row">
+                        <span><i class="fa-solid fa-palette"></i> Color Distribution</span>
+                        <div class="bar-track"><div id="colorBar" class="bar-fill"></div></div>
+                        <strong id="colorScore">--</strong>
+                    </div>
+                </div>
+            </article>
+        </section>
+
+        <section id="batch-upload" class="panel batch-panel">
+            <div class="section-heading">
+                <span class="icon-pill"><i class="fa-solid fa-layer-group"></i></span>
+                <div>
+                    <p class="eyebrow">Dataset Intake</p>
+                    <h2>Batch Upload</h2>
+                </div>
+            </div>
+
+            <div class="batch-layout">
+                <div class="batch-control">
+                    <label class="batch-picker" for="batchInput">
+                        <i class="fa-solid fa-images"></i>
+                        <span>Select Multiple Images</span>
+                        <small>Run the same authenticity scan across a small dataset sample.</small>
+                    </label>
+                    <input id="batchInput" type="file" multiple accept="image/*" hidden>
+
+                    <div class="batch-actions">
+                        <button id="analyzeBatchButton" class="analyze-button compact" type="button" disabled>
+                            <span class="button-content">
+                                <i class="fa-solid fa-list-check"></i>
+                                Analyze Batch
+                            </span>
+                        </button>
+                        <span id="batchProgress" class="batch-progress">No batch selected.</span>
+                    </div>
+
+                    <ul id="batchFileList" class="batch-file-list" aria-label="Selected batch files"></ul>
+                </div>
+
+                <div class="batch-results">
+                    <div id="batchSummary" class="batch-summary" aria-live="polite">
+                        <div>
+                            <span>Total Scanned</span>
+                            <strong id="batchTotal">0</strong>
+                        </div>
+                        <div>
+                            <span>Likely Real</span>
+                            <strong id="batchReal">0</strong>
+                        </div>
+                        <div>
+                            <span>Uncertain</span>
+                            <strong id="batchUncertain">0</strong>
+                        </div>
+                        <div>
+                            <span>Likely AI</span>
+                            <strong id="batchAi">0</strong>
+                        </div>
+                    </div>
+
+                    <div class="batch-table-wrap">
+                        <table class="batch-table">
+                            <thead>
+                                <tr>
+                                    <th>File name</th>
+                                    <th>AI probability</th>
+                                    <th>Verdict</th>
+                                    <th>Confidence</th>
+                                    <th>Main reason flagged</th>
+                                </tr>
+                            </thead>
+                            <tbody id="batchResultsBody">
+                                <tr class="batch-empty-row">
+                                    <td colspan="5">Batch results will appear here.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="insight-grid">
+            <article class="panel chart-panel">
+                <div class="section-heading">
+                    <span class="icon-pill"><i class="fa-solid fa-chart-simple"></i></span>
+                    <div>
+                        <p class="eyebrow">Signal Breakdown</p>
+                        <h2>Detection Layers</h2>
+                    </div>
+                </div>
+                <div class="chart-wrap">
+                    <canvas id="scoreChart" aria-label="Score breakdown chart"></canvas>
+                    <div id="scoreChartFallback" class="chart-fallback" hidden></div>
+                </div>
+            </article>
+
+            <article class="panel explain-panel">
+                <div class="section-heading">
+                    <span class="icon-pill"><i class="fa-solid fa-clipboard-list"></i></span>
+                    <div>
+                        <p class="eyebrow">Explainability Report</p>
+                        <h2>Why It Was Flagged</h2>
+                    </div>
+                </div>
+                <ul id="explanationList" class="explanation-list">
+                    <li>Upload an image to generate an explainability report.</li>
+                </ul>
+            </article>
+        </section>
+
+        <section id="dataset-protection" class="panel dataset-panel">
+            <div class="section-heading">
+                <span class="icon-pill"><i class="fa-solid fa-network-wired"></i></span>
+                <div>
+                    <p class="eyebrow">AI Inbreeding Prevention</p>
+                    <h2>Dataset Protection Workflow</h2>
+                </div>
+            </div>
+            <div class="workflow-grid">
+                <div class="workflow-step">
+                    <span>01</span>
+                    <h3>Quarantine high risk</h3>
+                    <p>Images marked high risk should be removed from training datasets until a human reviewer approves them.</p>
+                </div>
+                <div class="workflow-step">
+                    <span>02</span>
+                    <h3>Review uncertainty</h3>
+                    <p>Uncertain images should be manually reviewed because mixed signals can happen in real photos and edited media.</p>
+                </div>
+                <div class="workflow-step">
+                    <span>03</span>
+                    <h3>Preserve clean data</h3>
+                    <p>Clean data improves model reliability, reduces retraining costs, and lowers the risk of AI inbreeding loops.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="info-grid">
+            <article class="panel">
+                <div class="section-heading">
+                    <span class="icon-pill"><i class="fa-solid fa-microchip"></i></span>
+                    <div>
+                        <p class="eyebrow">Process</p>
+                        <h2>How It Works</h2>
+                    </div>
+                </div>
+                <ul class="feature-list">
+                    <li>The image is checked for camera metadata and known generator fingerprints.</li>
+                    <li>Pixels are analyzed for texture smoothness, frequency patterns, repeated patches, edge behavior, compression noise, and color balance.</li>
+                    <li>Scores are combined into an AI probability using weighted signal fusion.</li>
+                    <li>The result helps protect AI training data from AI inbreeding.</li>
+                </ul>
+            </article>
+
+            <article class="panel">
+                <div class="section-heading">
+                    <span class="icon-pill warning"><i class="fa-solid fa-triangle-exclamation"></i></span>
+                    <div>
+                        <p class="eyebrow">Boundaries</p>
+                        <h2>Limitations</h2>
+                    </div>
+                </div>
+                <ul class="feature-list">
+                    <li>This is an educational prototype and does not guarantee perfect detection.</li>
+                    <li>Some real photos may lack metadata, especially after social media sharing.</li>
+                    <li>Some AI images may include fake metadata or post-processing artifacts.</li>
+                    <li>Best results come from combining automated scoring with human review.</li>
+                </ul>
+            </article>
+        </section>
+
+        <aside id="chatWidget" class="chat-widget" aria-label="sAIfty Assistant">
+            <button id="chatToggle" class="chat-toggle" type="button" aria-label="Open sAIfty Assistant" aria-expanded="false">
+                <i class="fa-solid fa-message"></i>
+            </button>
+
+            <section id="chatWindow" class="chat-window" aria-hidden="true">
+                <header class="chat-header">
+                    <div>
+                        <span class="chat-kicker">sAIfty Assistant</span>
+                        <strong>Training Data Safety Guide</strong>
+                    </div>
+                    <button id="chatClose" class="chat-close" type="button" aria-label="Close chat">
+                        <i class="fa-solid fa-xmark"></i>
+                        <span>Close</span>
+                    </button>
+                </header>
+
+                <div id="chatMessages" class="chat-messages" aria-live="polite">
+                    <div class="chat-message bot">
+                        <span>Ask me about AI image detection, AI inbreeding, metadata, texture, edges, or training data safety.</span>
+                    </div>
+                </div>
+
+                <div class="quick-questions" aria-label="Quick questions">
+                    <button type="button" data-question="What is AI inbreeding?">What is AI inbreeding?</button>
+                    <button type="button" data-question="How does the scanner work?">How does the scanner work?</button>
+                    <button type="button" data-question="Can it be wrong?">Can it be wrong?</button>
+                    <button type="button" data-question="Why metadata?">Why metadata?</button>
+                </div>
+
+                <form id="chatForm" class="chat-form">
+                    <input id="chatInput" type="text" autocomplete="off" placeholder="Ask about detection..." aria-label="Ask sAIfty Assistant">
+                    <button type="submit" aria-label="Send message">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </form>
+            </section>
+        </aside>
+    </main>
+
+    <script src="{{ url_for('static', filename='script.js') }}?v=4"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+Flask
+flask-cors
+Pillow
+pillow-heif
+opencv-python-headless
+numpy
+rawpy
+requests
+python-dotenv
+gunicorn
